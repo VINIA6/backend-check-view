@@ -4,13 +4,14 @@ import jwt from 'jsonwebtoken';
 interface AuthPayload {
   id: string;
   email: string;
-  role: string;
+  role: 'admin' | 'viewer';
 }
 
 interface GuestPayload {
   name: string;
   email: string;
   shareToken: string;
+  projectId: string;
 }
 
 declare global {
@@ -35,14 +36,18 @@ export const authOrGuestMiddleware = (req: Request, res: Response, next: NextFun
   try {
     if (type === 'Bearer') {
       // Autenticação normal de usuário
-      const decoded = jwt.verify(token, jwtSecret) as AuthPayload;
-      req.user = decoded;
-      next();
+      const decoded = jwt.verify(token, jwtSecret) as any;
+      req.user = {
+        id: decoded.sub,
+        email: decoded.email,
+        role: decoded.role as 'admin' | 'viewer',
+      };
+      return next();
     } else if (type === 'Guest') {
       // Autenticação de convidado
       const decoded = jwt.verify(token, jwtSecret) as GuestPayload;
       req.guest = decoded;
-      next();
+      return next();
     } else {
       return res.status(401).json({ message: 'Invalid authorization type' });
     }

@@ -5,17 +5,10 @@ interface GuestPayload {
   name: string;
   email: string;
   shareToken: string;
+  projectId: string;
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      guest?: GuestPayload;
-    }
-  }
-}
-
-export const guestAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const guestAuthMiddleware = (req: Request, _res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
