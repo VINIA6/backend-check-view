@@ -1,0 +1,132 @@
+// Prisma Schema para Plataforma de Anotações de Vídeo
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum para roles de usuário
+enum UserRole {
+  ADMIN
+  VIEWER
+}
+
+// Tabela de Usuários
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(ADMIN)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  projects      Project[]
+  annotations   Annotation[]
+  guestSessions GuestSession[]
+
+  @@map("users")
+}
+
+// Tabela de Projetos
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  videos       Video[]
+  shareTokens  ShareToken[]
+
+  @@map("projects")
+}
+
+// Tabela de Vídeos
+model Video {
+  id          String   @id @default(uuid())
+  name        String
+  url         String?  // URL do vídeo (se for streaming)
+  filePath    String?  // Caminho do arquivo (se for local)
+  duration    Float    @default(0)
+  thumbnail   String?
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  annotations Annotation[]
+
+  @@map("videos")
+}
+
+// Tabela de Anotações
+model Annotation {
+  id         String   @id @default(uuid())
+  timestamp  Float    // Tempo em segundos no vídeo
+  comment    String
+  color      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Dados do convidado (se a anotação foi feita por um guest)
+  guestName  String?  // Nome do convidado
+  guestEmail String?  // Email do convidado
+
+  // Relações
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  // userId é opcional agora (null se foi criado por guest)
+  userId  String?
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("annotations")
+}
+
+// Tabela de Tokens de Compartilhamento
+model ShareToken {
+  id         String    @id @default(uuid())
+  token      String    @unique
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relações
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("share_tokens")
+}
+
+// Tabela de Sessões de Visitantes (Guest)
+model GuestSession {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  token     String   // Share token que foi acessado
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  // Relações (opcional - para tracking)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("guest_sessions")
+}
+
